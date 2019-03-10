@@ -21,51 +21,38 @@ import {
 
 export function codegen(contract: Contract) {
   const template = `
-  import Contract, { CustomOptions, contractOptions } from "web3/eth/contract";
-  import { TransactionObject, BlockType } from "web3/eth/types";
-  import { Callback, EventLog } from "web3/types";
+  import { Contract, ContractOptions } from "web3-eth-contract";
+  import { Transaction, EventLog, PromiEvent } from "web3-core";
+  import { Block } from "web3-eth";
   import { EventEmitter } from "events";
-  import { Provider } from "web3/providers";
 
-  export class ${contract.name} {
-    constructor(
-        jsonInterface: any[],
-        address?: string,
-        options?: CustomOptions
-    );
-    _address: string;
-    options: contractOptions;
+  export type Callback<T> = (error: Error, result: T) => void;
+
+  interface TransactionObject<T> {
+    arguments: any[];
+    call(tx?: Transaction): Promise<T>;
+    send(tx?: Transaction): PromiEvent<T>;
+    estimateGas(tx?: Transaction): Promise<number>;
+    encodeABI(): string;
+  }
+
+  export class ${contract.name} extends Contract {
     methods: {
       ${contract.constantFunctions.map(generateFunction).join("\n")}
       ${contract.functions.map(generateFunction).join("\n")}
       ${contract.constants.map(generateConstants).join("\n")}
     };
-    deploy(options: {
-        data: string;
-        arguments: any[];
-    }): TransactionObject<Contract>;
     events: {
       ${contract.events.map(generateEvents).join("\n")}
       allEvents: (
           options?: {
               filter?: object;
-              fromBlock?: BlockType;
+              fromBlock?: Block;
               topics?: (null|string)[];
           },
           cb?: Callback<EventLog>
       ) => EventEmitter;
     };
-    getPastEvents(
-        event: string,
-        options?: {
-            filter?: object;
-            fromBlock?: BlockType;
-            toBlock?: BlockType;
-            topics?: (null|string)[];
-        },
-        cb?: Callback<EventLog[]>
-    ): Promise<EventLog[]>;
-    setProvider(provider: Provider): void;
     clone(): ${contract.name};
 }
   `;
@@ -112,7 +99,7 @@ function generateEvents(event: EventDeclaration) {
   ${event.name}(
     options?: {
         filter?: object;
-        fromBlock?: BlockType;
+        fromBlock?: Block;
         topics?: (null|string)[];
     },
     cb?: Callback<EventLog>): EventEmitter;
